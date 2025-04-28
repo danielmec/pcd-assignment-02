@@ -1,0 +1,176 @@
+% filepath: /Users/danielmeco/Desktop/ass02/Spiegazione.tex
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+\title{Relazione Progetto \\ \large Dependency Analyser Lib}
+\author{Gruppo di Sviluppo}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+In questa relazione presentiamo la libreria \texttt{DependencyAnalyserLib}, sviluppata per l'analisi asincrona delle dipendenze in progetti Java. Verranno illustrate le classi principali, il loro funzionamento, le interazioni e la strategia di testing implementata.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduzione}
+La libreria \texttt{DependencyAnalyserLib} fornisce un insieme di metodi per analizzare le dipendenze nei sorgenti Java. Il flusso di analisi copre tre livelli differenti:
+\begin{enumerate}
+    \item \textbf{Classe}: Dato un singolo file Java, individua gli import dichiarati.
+    \item \textbf{Package}: Analizza tutti i file Java di una cartella, aggregando le dipendenze delle classi.
+    \item \textbf{Progetto}: Esamina tutti i package in una struttura di progetto e restituisce un report complessivo.
+\end{enumerate}
+
+\section{Struttura del Progetto}
+Il progetto \`e organizzato in modo modulare, con directory dedicate a:
+\begin{itemize}
+  \item \textbf{parser}: Contiene \textit{JavaParser.js}, responsabile del parsing asincrono dei file Java tramite la libreria \texttt{java-parser}.
+  \item \textbf{lib}: Contiene \textit{DependecyAnalyserLib.js}, la classe principale con i metodi di analisi.
+  \item \textbf{models}: Contiene i modelli \texttt{ClassDepsReport}, \texttt{PackageDepsReport} e \texttt{ProjectDepsReport}, che incapsulano i risultati delle analisi.
+  \item \textbf{test}: Include i vari test (\textit{testAnalyzer.js} e \textit{testStructure.js}) per verificare il corretto funzionamento dell'intera libreria.
+\end{itemize}
+
+\section{Componenti Principali}
+\subsection{1. Classe \texttt{DependecyAnalyserLib}}
+\label{sec:analyserlib}
+\texttt{DependecyAnalyserLib} \`e la classe principale che fornisce i metodi asincroni per l'analisi dei file Java:
+
+\subsubsection*{\texttt{async getClassDependencies(classSrcFile)}}
+\begin{itemize}
+  \item Verifica l'esistenza del file.
+  \item Legge il contenuto tramite il modulo \texttt{fs.promises}.
+  \item Utilizza il parser (\texttt{JavaParser}) per estrarre le dipendenze (dichiarazioni \texttt{import}).
+  \item Restituisce un \texttt{ClassDepsReport} con il nome della classe (estratto dal nome del file) e l'elenco delle dipendenze.
+\end{itemize}
+
+\subsubsection*{\texttt{async getPackageDependencies(packageSrcFolder)}}
+\begin{itemize}
+  \item Ricerca ricorsivamente i file Java all'interno della cartella indicata, tramite il metodo \texttt{findJavaFiles}.
+  \item Analizza ogni file raccolto con \texttt{getClassDependencies}, in parallelo (tramite \texttt{Promise.all}).
+  \item Aggrega i risultati in un \texttt{PackageDepsReport}, che contiene i report di ciascuna classe e una lista di dipendenze \emph{deduplicate}.
+\end{itemize}
+
+\subsubsection*{\texttt{async getProjectDependencies(projectSrcFolder)}}
+\begin{itemize}
+  \item Identifica tutti i package del progetto via \texttt{findJavaPackages}.
+  \item Per ogni package, invoca \texttt{getPackageDependencies}, ancora una volta in parallelo (\texttt{Promise.all}).
+  \item Restituisce un \texttt{ProjectDepsReport} con il nome del progetto, un elenco dei package analizzati e l'insieme globale delle dipendenze.
+\end{itemize}
+
+\subsubsection*{\texttt{async findJavaFiles(dir)}}
+\begin{itemize}
+  \item Scansiona ricorsivamente il contenuto della directory.
+  \item Raccoglie i file con estensione \texttt{.java}.
+  \item Restituisce un array di percorsi completi dei file.
+\end{itemize}
+
+\subsubsection*{\texttt{async findJavaPackages(projectFolder)}}
+\begin{itemize}
+  \item Utilizza \texttt{findJavaFiles} per trovare tutti i file Java nel progetto.
+  \item Estrae le directory di ogni file ed aggiunge tali percorsi in un \texttt{Set}.
+  \item Restituisce l'elenco dei package (rappresentati dalle cartelle che contengono file Java).
+\end{itemize}
+
+\subsection{2. Classe \texttt{JavaParser}}
+\texttt{JavaParser} (contenuta nel file \texttt{JavaParser.js}) si basa sulla libreria \texttt{java-parser}. Il metodo principale \texttt{extractDependencies(content)}:
+\begin{itemize}
+  \item Converte il contenuto di un file Java in un AST (Abstract Syntax Tree).
+  \item Naviga nella sotto-struttura \texttt{ordinaryCompilationUnit}, cercando le \texttt{importDeclaration}.
+  \item Ricava i nomi delle dipendenze tramite le posizioni \texttt{startOffset} ed \texttt{endOffset} o interrogando i nodi dell'AST.
+  \item Restituisce un array di stringhe contenente i nomi dei package/classi importati.
+\end{itemize}
+
+\subsection{3. Modelli di Report}
+\label{sec:reports}
+
+\begin{description}
+  \item[\texttt{ClassDepsReport}] Contiene le dipendenze (\textit{imports}) di un singolo file Java.
+    \begin{itemize}
+      \item \texttt{className}: Nome della classe analizzata.
+      \item \texttt{dependencies}: Array di stringhe con i percorsi delle dipendenze.
+    \end{itemize}
+
+  \item[\texttt{PackageDepsReport}] Aggrega i \texttt{ClassDepsReport} di un package.
+    \begin{itemize}
+      \item \texttt{packageName}: Nome (o cartella) del package.
+      \item \texttt{classReports}: Elenco di \texttt{ClassDepsReport}.
+      \item \texttt{dependencies}: Collezione univoca di tutte le dipendenze estratte dalle classi.
+    \end{itemize}
+
+  \item[\texttt{ProjectDepsReport}] Aggrega i \texttt{PackageDepsReport} di un intero progetto.
+    \begin{itemize}
+      \item \texttt{projectName}: Nome (o cartella root) del progetto.
+      \item \texttt{packageReports}: Elenco di \texttt{PackageDepsReport}.
+      \item \texttt{dependencies}: Collezione univoca di tutte le dipendenze, rimuovendo i duplicati.
+    \end{itemize}
+\end{description}
+
+\section{Meccanismo di Deduplicazione}
+I report \texttt{PackageDepsReport} e \texttt{ProjectDepsReport} contengono funzioni interne di aggregazione che rimuovono i duplicati. Ogni volta che si uniscono liste di dipendenze, viene utilizzato un \texttt{Set} per creare l'elenco finale unico.
+
+\section{Gestione dell'Asincronia}
+Tutta la logica di I/O col filesystem e di parsing viene gestita con \texttt{async/await} e \texttt{Promise.all}:
+\begin{itemize}
+  \item \textbf{Parallelismo}: Pi\`u file o package possono essere analizzati in parallelo, migliorando le prestazioni su sistemi multi-core.
+  \item \textbf{Error Handling}: Ogni blocco \texttt{try/catch} cattura le eccezioni, gestendole in modo sicuro e loggandole sulla console.
+\end{itemize}
+
+\section{Sistema di Test}\label{sec:tests}
+\subsection{Scopo}
+Il sistema di test verifica il corretto funzionamento della libreria su diversi scenari. \texttt{testAnalyzer.js} contiene:
+\begin{itemize}
+  \item \texttt{testClassDependencies()}: Analizza una singola classe di esempio e verifica le dipendenze estratte.
+  \item \texttt{testPackageDependencies()}: Verifica che venga analizzato correttamente un package completo, controllando l'aggregazione delle dipendenze.
+  \item \texttt{testProjectDependencies()}: Simula un progetto con pi\`u package, testando l'analisi complessiva e la deduplicazione.
+\end{itemize}
+
+\subsection{Struttura di Test Complessa}
+\texttt{testStructure.js} crea dinamicamente una gerarchia di cartelle e file Java, simulando \emph{cross-dependencies} con \texttt{import} incrociati tra package diversi. Questo consente di validare:
+\begin{itemize}
+    \item La scansione ricorsiva di pi\`u cartelle (\texttt{findJavaFiles}).
+    \item La corretta associazione file-package (\texttt{findJavaPackages}).
+    \item L'esatto riconoscimento delle dipendenze \emph{incrociate} tra package diversi.
+\end{itemize}
+
+\subsection{Esecuzione}
+Basta lanciare:
+\begin{verbatim}
+node src/test/testAnalyzer.js
+\end{verbatim}
+si ottiene l'esecuzione di tutti i test in sequenza e la stampa dei risultati in console.
+
+\section{Ottimizzazioni e Considerazioni}
+\begin{itemize}
+  \item \textbf{Esecuzione parallela}: \texttt{Promise.all} velocizza l'analisi di pi\`u file o package.
+  \item \textbf{Gestione errori}: Ogni operazione I/O e di parsing \`e protetta da \texttt{try/catch}.
+  \item \textbf{Logging avanzato}: Output dettagliato per file letti, AST generati e \texttt{import} trovati.
+  \item \textbf{Estensibilit\`a}: L'architettura \`e modulare e semplifica l'aggiunta di funzioni (es. trattare wildcard, analizzare dipendenze non dichiarate).
+  \item \textbf{Deduplicazione}: Nei report aggregati, le dipendenze duplicate vengono rimosse.
+\end{itemize}
+
+\section{Limitazioni}
+\begin{enumerate}
+  \item Non rileva dipendenze \emph{non} dichiarate negli \texttt{import}.
+  \item Gestione wildcard incompleta (\texttt{import java.util.*}).
+  \item Non distingue classi, interfacce e tipi annidati.
+\end{enumerate}
+
+\section{Conclusioni}
+La libreria \texttt{DependencyAnalyserLib} soddisfa i requisiti dell'Assignment \#02 (parte 1), fornendo:
+\begin{itemize}
+  \item Analisi asincrona a livello di file, package e intero progetto.
+  \item Report completi, con deduplicazione delle dipendenze.
+  \item Un sistema di test \emph{end-to-end} per validare l'intero flusso.
+\end{itemize}
+
+Il progetto pu\`o essere esteso per supportare import wildcard, rilevamento di dipendenze non dichiarate e integrazioni con sistemi reattivi o UI (richiesto nella parte 2).
+
+\end{document}
