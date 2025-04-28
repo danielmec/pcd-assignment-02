@@ -59,9 +59,11 @@ class JavaParser {
     }
   }
   
+  // metodi privati per l'analisi dell'AST non usati, perche usiamo direttamente le posizioni
+  // e non la ricostruzione del testo sorgente
   /**
    * Estrae il testo sorgente originale dal nodo dell'AST
-   */
+   
   _getSourceText(node) {
     // Se il nodo ha un campo "image", usalo direttamente
     if (node.image) return node.image;
@@ -104,12 +106,12 @@ class JavaParser {
     
     return importName ? `import ${importName};` : null;
   }
-
+*/
   /**
    * Estrai il percorso completo dal nodo packageOrTypeName
    * @param {Object} node - Nodo dell'AST
    * @returns {string|null} - Percorso dell'import
-   */
+   
   _extractPackageOrTypeName(node) {
     if (!node || !node.children) return null;
     
@@ -125,12 +127,13 @@ class JavaParser {
     
     return null;
   }
+  */
 
   /**
    * Estrae un percorso completo da un nodo qualifiedName
    * @param {Object} qualifiedName - Nodo qualifiedName dell'AST
    * @returns {string} - Percorso completo
-   */
+   
   _extractQualifiedNamePath(qualifiedName) {
     if (!qualifiedName || !qualifiedName.children) return "";
     
@@ -155,6 +158,7 @@ class JavaParser {
     
     return parts.join('.');
   }
+    */
 }
 
 module.exports = JavaParser;
