@@ -25,15 +25,67 @@ async function createTestStructure() {
   // Crea i file
   const files = [
     {
+      path: '/com/example/model/Person.java',
+      content: `package com.example.model;
+
+public interface Person {
+    String getName();
+    void setName(String name);
+}`
+    },
+    {
+      path: '/com/example/model/BaseEntity.java',
+      content: `package com.example.model;
+import java.io.Serializable;
+
+public abstract class BaseEntity implements Serializable {
+    private Long id;
+    
+    public Long getId() {
+        return id;
+    }
+    
+    public void setId(Long id) {
+        this.id = id;
+    }
+}`
+    },
+    {
+      path: '/com/example/model/Employee.java',
+      content: `package com.example.model;
+import java.math.BigDecimal;
+
+public interface Employee extends Person {
+    BigDecimal getSalary();
+    void setSalary(BigDecimal salary);
+}`
+    },
+    {
       path: '/com/example/model/User.java',
       content: `package com.example.model;
 import java.util.Date;
 import java.util.UUID;
 
-public class User {
-    private UUID id;
+public class User extends BaseEntity implements Person {
+    private UUID uuid;
     private String name;
     private Date birthDate;
+    
+    public String getName() {
+        return name;
+    }
+    
+    public void setName(String name) {
+        this.name = name;
+    }
+    
+    public Date getBirthDate() {
+        return birthDate;
+    }
+    
+    public void setBirthDate(Date birthDate) {
+        this.birthDate = birthDate;
+    }
 }`
     },
     {

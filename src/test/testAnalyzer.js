@@ -25,7 +25,7 @@ async function testClassDependencies() {
         
         return true;
     } catch (error) {
-        console.error('❌ Test fallito:', error.message);
+        console.error('❌❌❌❌❌  Test fallito:', error.message);
         return false;
     }
 }
@@ -99,6 +99,40 @@ async function testProjectDependencies(testRoot) {
 }
 
 /**
+ * Testa il rilevamento delle relazioni di ereditarietà
+ */
+async function testInheritanceDependencies(testRoot) {
+    try {
+        const analyzer = new DependecyAnalyserLib();
+        
+        console.log('\n=== Test Analisi Relazioni di Ereditarietà ===');
+        
+        // Test Employee.java (interfaccia che estende Person)
+        const employeeFile = path.join(testRoot, 'com/example/model/Employee.java');
+        console.log(`\nAnalizzando ${employeeFile}`);
+        const employeeReport = await analyzer.getClassDependencies(employeeFile);
+        
+        console.log('Employee dipendenze:');
+        console.log(`- Import: ${employeeReport.dependencies.filter(d => !d.includes('Person')).join(', ')}`);
+        console.log(`- Extends: ${employeeReport.dependencies.filter(d => d.includes('Person')).join(', ')}`);
+        
+        // Test User.java (classe che estende BaseEntity e implementa Person)
+        const userFile = path.join(testRoot, 'com/example/model/User.java');
+        console.log(`\nAnalizzando ${userFile}`);
+        const userReport = await analyzer.getClassDependencies(userFile);
+        
+        console.log('User dipendenze:');
+        console.log(`- Import: ${userReport.dependencies.filter(d => !d.includes('BaseEntity') && !d.includes('Person')).join(', ')}`);
+        console.log(`- Extends/Implements: ${userReport.dependencies.filter(d => d.includes('BaseEntity') || d.includes('Person')).join(', ')}`);
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Test fallito:', error.message);
+        return false;
+    }
+}
+
+/**
  * Esegue tutti i test in sequenza
  */
 async function runAllTests() {
@@ -116,11 +150,15 @@ async function runAllTests() {
     // Test progetto
     const projectResult = await testProjectDependencies(testRoot);
     
+    // Test relazioni di ereditarietà
+    const inheritanceResult = await testInheritanceDependencies(testRoot);
+    
     // Riepilogo dei risultati
     console.log('\n📝 Riepilogo dei test:');
     console.log(`- Test Classe: ${classResult ? '✅ Passato' : '❌ Fallito'}`);
     console.log(`- Test Package: ${packageResult ? '✅ Passato' : '❌ Fallito'}`);
     console.log(`- Test Progetto: ${projectResult ? '✅ Passato' : '❌ Fallito'}`);
+    console.log(`- Test Ereditarietà: ${inheritanceResult ? '✅ Passato' : '❌ Fallito'}`);
 }
 
 // Esegui tutti i test
