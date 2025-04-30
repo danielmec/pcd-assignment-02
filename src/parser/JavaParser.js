@@ -43,12 +43,15 @@ class JavaParser {
    * @private
    */
   _extractImportDependencies(compilationUnit, content, dependencies) {
+    // Array per tenere traccia degli import wildcard
+    const wildcardImports = [];
+    const specificImports = [];
+
     if (compilationUnit.children.importDeclaration) {
       const imports = compilationUnit.children.importDeclaration;
       console.log(`Trovate ${imports.length} dichiarazioni di import`);
       
       for (const importDecl of imports) {
-        // Estrai la stringa di import usando le posizioni nel testo originale
         if (importDecl.location) {
           const importText = content.substring(
             importDecl.location.startOffset,
@@ -56,17 +59,246 @@ class JavaParser {
           ).trim();
           
           // Rimuovi "import " e ";" per ottenere solo il nome della classe/package
-          const cleanImport = importText
+          let cleanImport = importText
             .replace(/^import\s+/, '')
             .replace(/;$/, '')
             .trim();
             
-          dependencies.push(cleanImport);
-          console.log("Import trovato:", cleanImport);
+          // Controlla se è un import statico
+          const isStatic = cleanImport.startsWith('static ');
+          if (isStatic) {
+            cleanImport = cleanImport.replace(/^static\s+/, '');
+          }
+          
+          // Verifica se è una wildcard
+          const isWildcard = cleanImport.endsWith('.*');
+          
+          if (isWildcard) {
+            wildcardImports.push({
+              packageName: cleanImport.substring(0, cleanImport.length - 2),
+              isStatic
+            });
+            console.log(`Import wildcard trovato: ${cleanImport}`);
+          } else {
+            specificImports.push(cleanImport);
+            dependencies.push(cleanImport);
+            console.log(`Import specifico trovato: ${cleanImport}`);
+          }
         }
       }
-    } else {
-      console.log("Nessuna dichiarazione di import trovata nell'AST");
+    }
+    
+    // Ora cerca tutti gli identificatori di tipo nel codice e collegali ai wildcard imports
+    if (wildcardImports.length > 0) {
+      this._findWildcardReferences(compilationUnit, wildcardImports, specificImports, dependencies);
+    }
+  }
+
+  /**
+   * Cerca tutti i riferimenti a classi che potrebbero venire da import wildcard
+   * @private
+   */
+  _findWildcardReferences(compilationUnit, wildcardImports, specificImports, dependencies) {
+    // Mappa per tracciare i nomi già trovati e associarli ai loro package
+    const foundReferences = new Map();
+    
+    console.log("INIZIO ANALISI WILDCARD - Import wildcards trovati:", wildcardImports.map(w => w.packageName).join(', '));
+    console.log("Import specifici presenti:", specificImports.join(', '));
+    
+    // Funzione ricorsiva per visitare i nodi dell'AST
+    const visitNode = (node, path = "") => {
+      if (!node || typeof node !== 'object') return;
+      
+      const currentPath = path ? `${path} > ${node.name || 'unnamed'}` : node.name || 'root';
+      
+      // Debug del nodo corrente
+      if (node.name) {
+        console.log(` Analisi nodo: ${currentPath}`);
+      }
+      
+      // 1. Cerca gli identificatori di tipo (classi/interfacce)
+      if (node.name === 'classOrInterfaceType' || node.name === 'classType') {
+        console.log(`  Trovato nodo di tipo classe: ${node.name}`);
+        
+        if (node.children && node.children.Identifier) {
+          const typeName = node.children.Identifier[0].image;
+          console.log(`Nome tipo trovato: ${typeName}`);
+          this._checkAndAddWildcardReference(typeName, wildcardImports, specificImports, dependencies, foundReferences);
+        } else {
+          console.log(`Nessun identificatore trovato nel nodo ${node.name}`);
+        }
+      }
+      
+      // 2. Cerca riferimenti in dichiarazioni di variabili
+      else if (node.name === 'localVariableDeclaration' || node.name === 'fieldDeclaration') {
+        console.log(` Trovata dichiarazione variabile/campo: ${node.name}`);
+        
+        if (node.children && node.children.unannType && node.children.unannType[0].children) {
+          const unannType = node.children.unannType[0];
+          console.log(`  Tipo non annotato trovato`);
+          
+          if (unannType.children.unannReferenceType) {
+            const refType = unannType.children.unannReferenceType[0];
+            console.log(`  Tipo riferimento non annotato trovato`);
+            this._extractTypeNamesFromNode(refType, wildcardImports, specificImports, dependencies, foundReferences);
+          } else {
+            console.log(` Nessun tipo riferimento trovato`);
+          }
+        } else {
+          console.log(` Struttura del tipo non riconosciuta`);
+        }
+      }
+      
+      // 3. Cerca riferimenti in creazioni di oggetti (new ClassName())
+      else if (node.name === 'unqualifiedClassInstanceCreationExpression') {
+        console.log(`  Trovata creazione istanza non qualificata: ${node.name}`);
+        
+        // Esplora il nodo per trovare il tipo della classe da istanziare
+        if (node.children && node.children.classOrInterfaceTypeToInstantiate) {
+          const typeNode = node.children.classOrInterfaceTypeToInstantiate[0];
+          console.log(`Tipo da istanziare trovato`);
+          
+          // Estrai il nome della classe dalla struttura
+          this._extractClassNameFromInstantiation(typeNode, wildcardImports, specificImports, dependencies, foundReferences);
+        } else {
+          console.log(`  Struttura di creazione istanza non riconosciuta`);
+        }
+      }
+      
+      // 4. Controlla anche il tipo newExpression che contiene unqualifiedClassInstanceCreationExpression
+      else if (node.name === 'newExpression') {
+        console.log(`  Trovata espressione new: ${node.name}`);
+        
+        if (node.children && node.children.unqualifiedClassInstanceCreationExpression) {
+          const instNode = node.children.unqualifiedClassInstanceCreationExpression[0];
+          
+          // Delega l'estrazione al caso specifico
+          visitNode(instNode, currentPath);
+        }
+      }
+      
+      // Visita tutti i figli del nodo
+      if (node.children) {
+        Object.entries(node.children).forEach(([key, childArray]) => {
+          if (Array.isArray(childArray)) {
+            childArray.forEach(child => visitNode(child, currentPath));
+          }
+        });
+      }
+    };
+    
+    // Inizia la visita dall'unità di compilazione
+    console.log(" Avvio analisi AST per wildcard...");
+    visitNode(compilationUnit);
+    console.log("FINE ANALISI WILDCARD - Riferimenti trovati:", [...foundReferences.keys()]);
+  }
+
+  /**
+   * Estrae il nome della classe da un nodo di istanziazione
+   * @private
+   */
+  _extractClassNameFromInstantiation(typeNode, wildcardImports, specificImports, dependencies, foundReferences) {
+    console.log(" Estrazione nome classe da istanziazione");
+    
+    // Stampa la struttura del nodo per debug    
+    if (typeNode.children && typeNode.children.Identifier) {
+      const typeName = typeNode.children.Identifier[0].image;
+      console.log(` Nome classe istanziata: ${typeName}`);
+      this._checkAndAddWildcardReference(typeName, wildcardImports, specificImports, dependencies, foundReferences);
+    }
+    else if (typeNode.children && typeNode.children.unannClassOrInterfaceType) {
+      const classType = typeNode.children.unannClassOrInterfaceType[0];
+      if (classType.children && classType.children.Identifier) {
+        const typeName = classType.children.Identifier[0].image;
+        console.log(` Nome classe istanziata (tramite unannClassOrInterfaceType): ${typeName}`);
+        this._checkAndAddWildcardReference(typeName, wildcardImports, specificImports, dependencies, foundReferences);
+      }
+    }
+    // Traversiamo ricorsivamente tutti i figli per trovare il nome della classe
+    else if (typeNode.children) {
+      Object.values(typeNode.children).forEach(childArray => {
+        if (Array.isArray(childArray)) {
+          childArray.forEach(child => {
+            this._extractClassNameFromInstantiation(child, wildcardImports, specificImports, dependencies, foundReferences);
+          });
+        }
+      });
+    }
+    else {
+      console.log(` Impossibile estrarre il nome della classe da instanziare`);
+    }
+  }
+
+  /**
+   * Verifica se un nome di tipo può provenire da un import wildcard e lo aggiunge alle dipendenze
+   * @private
+   */
+  _checkAndAddWildcardReference(typeName, wildcardImports, specificImports, dependencies, foundReferences) {
+    console.log(`  Verifica nome classe: "${typeName}"`);
+    
+    // Verifica che il nome sia valido (inizia con lettera maiuscola - convenzione Java per le classi)
+    if (!typeName || !/^[A-Z]/.test(typeName)) {
+      console.log(`  Nome scartato: "${typeName}" - non inizia con lettera maiuscola`);
+      return;
+    }
+    
+    // Verifica che non sia già negli import specifici
+    if (specificImports.some(imp => imp.endsWith('.' + typeName) || imp === typeName)) {
+      console.log(`  Nome ignorato: "${typeName}" - già presente negli import specifici`);
+      return;
+    }
+    
+    console.log(` Nome valido: "${typeName}" - cercando nei package wildcard...`);
+    
+    // Per ogni wildcard import, aggiungi una possibile dipendenza completa
+    for (const wildcard of wildcardImports) {
+      const fullName = `${wildcard.packageName}.${typeName}`;
+      
+      if (!foundReferences.has(fullName)) {
+        dependencies.push(fullName);
+        foundReferences.set(fullName, true);
+        console.log(` WILDCARD MATCH TROVATO: ${fullName}`);
+      } else {
+        console.log(` Riferimento già trovato: ${fullName}`);
+      }
+    }
+    
+    if (wildcardImports.length === 0) {
+      console.log(`  Nessun wildcard import disponibile per ${typeName}`);
+    }
+  }
+
+  /**
+   * Estrae nomi di tipo da un nodo e verifica se provengono da import wildcard
+   * @private
+   */
+  _extractTypeNamesFromNode(node, wildcardImports, specificImports, dependencies, foundReferences) {
+    if (!node || typeof node !== 'object') return;
+    
+    console.log(` Estrazione nomi da nodo ${node.name || 'senza nome'}`);
+    
+    // Estrai direttamente dagli identificatori
+    if (node.children && node.children.Identifier) {
+      const typeName = node.children.Identifier[0].image;
+      console.log(` Identificatore diretto trovato: ${typeName}`);
+      this._checkAndAddWildcardReference(typeName, wildcardImports, specificImports, dependencies, foundReferences);
+    }
+    
+    // Attraversa ricorsivamente la struttura
+    if (node.children) {
+      Object.values(node.children).forEach(childArray => {
+        if (Array.isArray(childArray)) {
+          childArray.forEach(child => {
+            if (child.name === 'Identifier') {
+              const typeName = child.image;
+              console.log(` Identificatore annidato trovato: ${typeName}`);
+              this._checkAndAddWildcardReference(typeName, wildcardImports, specificImports, dependencies, foundReferences);
+            } else {
+              this._extractTypeNamesFromNode(child, wildcardImports, specificImports, dependencies, foundReferences);
+            }
+          });
+        }
+      });
     }
   }
 
@@ -112,28 +344,52 @@ class JavaParser {
   }
 
   /**
+   * Utility per log selettivo dell'AST
+   * @private
+   */
+  _debugNode(nodeName, node) {
+    if (!node) return;
+    
+    //console.log(`${nodeName} - chiavi:`, Object.keys(node.children || {}));
+    
+    if (node.children?.Identifier) {
+      console.log(`${nodeName} > Identifier:`, node.children.Identifier[0].image);
+    }
+  }
+
+  /**
    * Estrae la classe parent (extends)
    * @private
    */
   _extractSuperclass(normalClassDecl, dependencies) {
-    if (!normalClassDecl.children || !normalClassDecl.children.superclass) return;
+    if (!normalClassDecl.children?.classExtends) return;
     
-    const superclassNode = normalClassDecl.children.superclass[0];
-    // Debug compatto
-    console.log("Struttura superclass:", Object.keys(superclassNode.children || {}));
+    const classExtendsNode = normalClassDecl.children.classExtends[0];
+    this._debugNode("classExtends", classExtendsNode);
     
-    if (!superclassNode.children || !superclassNode.children.classType) return;
-    
-    const classType = superclassNode.children.classType[0];
-    
-    // Debug compatto
-    console.log("Struttura classType:", Object.keys(classType.children || {}));
-    
-    // Estrai il nome della superclasse
-    if (classType.children && classType.children.identifier) {
-      const superClassName = classType.children.identifier[0].image;
-      dependencies.push(superClassName);
-      console.log("Estensione trovata:", superClassName);
+    if (classExtendsNode.children?.classType) {
+      const classType = classExtendsNode.children.classType[0];
+      this._debugNode("classType", classType);
+      
+      // Estrai nome direttamente o tramite classOrInterfaceType
+      let superClassName = null;
+      
+      if (classType.children?.Identifier) {
+        superClassName = classType.children.Identifier[0].image;
+      } 
+      else if (classType.children?.classOrInterfaceType) {
+        const ciType = classType.children.classOrInterfaceType[0];
+        this._debugNode("classOrInterfaceType", ciType);
+        
+        if (ciType.children?.Identifier) {
+          superClassName = ciType.children.Identifier[0].image;
+        }
+      }
+      
+      if (superClassName) {
+        dependencies.push(superClassName);
+        console.log(" Superclass trovata:", superClassName);
+      }
     }
   }
 
@@ -142,30 +398,40 @@ class JavaParser {
    * @private
    */
   _extractInterfaces(normalClassDecl, dependencies) {
-    if (!normalClassDecl.children || !normalClassDecl.children.superinterfaces) return;
+    if (!normalClassDecl.children || !normalClassDecl.children.classImplements) return;
     
-    const superInterfacesNode = normalClassDecl.children.superinterfaces[0];
-    // Debug compatto
-    console.log("Struttura superinterfaces:", Object.keys(superInterfacesNode.children || {}));
+    const implementsNode = normalClassDecl.children.classImplements[0];
     
-    if (!superInterfacesNode.children || !superInterfacesNode.children.interfaceTypeList) return;
+    // Log solo le chiavi invece dell'intero JSON
+    console.log("classImplements - chiavi:", Object.keys(implementsNode.children || {}));
     
-    const interfaceTypeList = superInterfacesNode.children.interfaceTypeList[0];
-    
-    if (!interfaceTypeList.children || !interfaceTypeList.children.interfaceType) return;
-    
-    for (const interfaceType of interfaceTypeList.children.interfaceType) {
-      if (!interfaceType.children || !interfaceType.children.classType) continue;
+    if (implementsNode.children && implementsNode.children.interfaceTypeList) {
+      const typeList = implementsNode.children.interfaceTypeList[0];
+      console.log("interfaceTypeList - chiavi:", Object.keys(typeList.children || {}));
       
-      const classType = interfaceType.children.classType[0];
-      
-      // Debug per capire la struttura
-      console.log("Struttura interfaceType:", JSON.stringify(classType, null, 2));
-      
-      if (classType.children && classType.children.identifier) {
-        const interfaceName = classType.children.identifier[0].image;
-        dependencies.push(interfaceName);
-        console.log("Implementazione trovata:", interfaceName);
+      if (typeList.children && typeList.children.interfaceType) {
+        // Mostra quante interfacce sono implementate
+        console.log(`Interfacce implementate trovate: ${typeList.children.interfaceType.length}`);
+        
+        for (const interfaceType of typeList.children.interfaceType) {
+          if (interfaceType.children && interfaceType.children.classOrInterfaceType) {
+            const typeNode = interfaceType.children.classOrInterfaceType[0];
+            
+            if (typeNode.children && typeNode.children.Identifier) {
+              const interfaceName = typeNode.children.Identifier[0].image;
+              dependencies.push(interfaceName);
+              console.log(" Interfaccia implementata trovata:", interfaceName);
+            }
+          } else if (interfaceType.children && interfaceType.children.classType) {
+            const typeNode = interfaceType.children.classType[0];
+            
+            if (typeNode.children && typeNode.children.Identifier) {
+              const interfaceName = typeNode.children.Identifier[0].image;
+              dependencies.push(interfaceName);
+              console.log(" Interfaccia implementata trovata:", interfaceName);
+            }
+          }
+        }
       }
     }
   }
@@ -194,23 +460,33 @@ class JavaParser {
    * @private
    */
   _extractExtendedInterfaces(normalInterfaceDecl, dependencies) {
-    // Verifica se l'interfaccia estende altre interfacce
     if (!normalInterfaceDecl.children || !normalInterfaceDecl.children.interfaceExtends) return;
     
     const extendsNode = normalInterfaceDecl.children.interfaceExtends[0];
-    // FIX: Errore nella variabile "oggetto" non definita
-    console.log("Struttura interfaceExtends:", Object.keys(extendsNode.children || {}));
+    console.log("interfaceExtends - chiavi:", Object.keys(extendsNode.children || {}));
     
-    // Estrai i nomi delle interfacce estese
     if (extendsNode.children && extendsNode.children.interfaceTypeList) {
       const typeList = extendsNode.children.interfaceTypeList[0];
+      console.log("interfaceTypeList - chiavi:", Object.keys(typeList.children || {}));
       
       if (typeList.children && typeList.children.interfaceType) {
+        // Mostra quante interfacce sono estese
+        console.log(`Interfacce estese trovate: ${typeList.children.interfaceType.length}`);
+        
         for (const interfaceType of typeList.children.interfaceType) {
           if (interfaceType.children && interfaceType.children.classOrInterfaceType) {
             const typeNode = interfaceType.children.classOrInterfaceType[0];
-            if (typeNode.children && typeNode.children.identifier) {
-              const extendedName = typeNode.children.identifier[0].image;
+            
+            if (typeNode.children && typeNode.children.Identifier) {
+              const extendedName = typeNode.children.Identifier[0].image;
+              dependencies.push(extendedName);
+              console.log(" Interfaccia estesa trovata:", extendedName);
+            }
+          } else if (interfaceType.children && interfaceType.children.classType) {
+            const typeNode = interfaceType.children.classType[0];
+            
+            if (typeNode.children && typeNode.children.Identifier) {
+              const extendedName = typeNode.children.Identifier[0].image;
               dependencies.push(extendedName);
               console.log("Interfaccia estesa trovata:", extendedName);
             }
@@ -232,23 +508,23 @@ class JavaParser {
     
     // Prova diversi percorsi di navigazione nell'AST
     if (interfaceType.children) {
-      // Percorso 1: classOrInterfaceType > identifier
+      // Percorso 1: classOrInterfaceType > Identifier
       if (interfaceType.children.classOrInterfaceType) {
         const typeNode = interfaceType.children.classOrInterfaceType[0];
-        if (typeNode.children && typeNode.children.identifier) {
-          typeName = typeNode.children.identifier[0].image;
+        if (typeNode.children && typeNode.children.Identifier) {
+          typeName = typeNode.children.Identifier[0].image;
         }
       }
-      // Percorso 2: classType > identifier
+      // Percorso 2: classType > Identifier
       else if (interfaceType.children.classType) {
         const classType = interfaceType.children.classType[0];
-        if (classType.children && classType.children.identifier) {
-          typeName = classType.children.identifier[0].image;
+        if (classType.children && classType.children.Identifier) {
+          typeName = classType.children.Identifier[0].image;
         }
       }
-      // Percorso 3: identifier diretto
-      else if (interfaceType.children.identifier) {
-        typeName = interfaceType.children.identifier[0].image;
+      // Percorso 3: Identifier diretto
+      else if (interfaceType.children.Identifier) {
+        typeName = interfaceType.children.Identifier[0].image;
       }
     }
     

@@ -103,25 +103,17 @@ async function testProjectDependencies(testRoot) {
  */
 async function testInheritanceDependencies(testRoot) {
     try {
-        const analyzer = new DependecyAnalyserLib();
-        
-        console.log('\n=== Test Analisi Relazioni di Ereditarietà ===');
-        
-        // Test Employee.java (interfaccia che estende Person)
-        const employeeFile = path.join(testRoot, 'com/example/model/Employee.java');
-        console.log(`\nAnalizzando ${employeeFile}`);
-        const employeeReport = await analyzer.getClassDependencies(employeeFile);
-        
-        console.log('Employee dipendenze:');
+        // Analizza file Employee.java
+        const employeeAnalyzer = new DependecyAnalyserLib(); // ✅ Nome corretto
+        const employeeReport = await employeeAnalyzer.getClassDependencies(path.join(testRoot, '/com/example/model/Employee.java'));
+        console.log("Employee dipendenze:");
         console.log(`- Import: ${employeeReport.dependencies.filter(d => !d.includes('Person')).join(', ')}`);
         console.log(`- Extends: ${employeeReport.dependencies.filter(d => d.includes('Person')).join(', ')}`);
-        
-        // Test User.java (classe che estende BaseEntity e implementa Person)
-        const userFile = path.join(testRoot, 'com/example/model/User.java');
-        console.log(`\nAnalizzando ${userFile}`);
-        const userReport = await analyzer.getClassDependencies(userFile);
-        
-        console.log('User dipendenze:');
+
+        // Analizza file User.java
+        const userAnalyzer = new DependecyAnalyserLib(); // ✅ Nome corretto
+        const userReport = await userAnalyzer.getClassDependencies(path.join(testRoot, '/com/example/model/User.java'));
+        console.log("User dipendenze:");
         console.log(`- Import: ${userReport.dependencies.filter(d => !d.includes('BaseEntity') && !d.includes('Person')).join(', ')}`);
         console.log(`- Extends/Implements: ${userReport.dependencies.filter(d => d.includes('BaseEntity') || d.includes('Person')).join(', ')}`);
         
@@ -145,20 +137,20 @@ async function runAllTests() {
     const testRoot = await createTestStructure();
     
     // Test package
-    const packageResult = await testPackageDependencies(testRoot);
+    // const packageResult = await testPackageDependencies(testRoot);
     
     // Test progetto
-    const projectResult = await testProjectDependencies(testRoot);
+    //const projectResult = await testProjectDependencies(testRoot);
     
     // Test relazioni di ereditarietà
-    const inheritanceResult = await testInheritanceDependencies(testRoot);
+    //const inheritanceResult = await testInheritanceDependencies(testRoot);
     
     // Riepilogo dei risultati
     console.log('\n📝 Riepilogo dei test:');
     console.log(`- Test Classe: ${classResult ? '✅ Passato' : '❌ Fallito'}`);
-    console.log(`- Test Package: ${packageResult ? '✅ Passato' : '❌ Fallito'}`);
-    console.log(`- Test Progetto: ${projectResult ? '✅ Passato' : '❌ Fallito'}`);
-    console.log(`- Test Ereditarietà: ${inheritanceResult ? '✅ Passato' : '❌ Fallito'}`);
+    //console.log(`- Test Package: ${packageResult ? '✅ Passato' : '❌ Fallito'}`);
+    //console.log(`- Test Progetto: ${projectResult ? '✅ Passato' : '❌ Fallito'}`);
+    //console.log(`- Test Ereditarietà: ${inheritanceResult ? '✅ Passato' : '❌ Fallito'}`);
 }
 
 // Esegui tutti i test

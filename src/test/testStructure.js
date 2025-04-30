@@ -111,7 +111,7 @@ public class UserService {
       path: '/com/example/util/Validator.java',
       content: `package com.example.util;
 import com.example.model.User;
-import org.sample.api.ValidationApi;
+import org.sample.api.*;
 
 public class Validator {
     public static boolean isValid(Object obj) {
