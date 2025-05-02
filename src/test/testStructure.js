@@ -6,6 +6,11 @@ const path = require('path');
  */
 async function createTestStructure() {
   const testRoot = path.resolve(__dirname, '../../test-data-project');
+
+  if (await fs.stat(testRoot).catch(() => false)) {
+    console.log('La struttura di test esiste già in:', testRoot);
+    return testRoot;
+  }
   
   // Struttura cartelle
   const dirs = [
