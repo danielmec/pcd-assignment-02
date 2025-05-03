@@ -1,6 +1,6 @@
-// Modifica il percorso di import (a seconda di dove sposterai il parser effettivo)
-const JavaParser = require('../../../src/parser/JavaParser');
-
+// Usa path per gestire i percorsi in modo più affidabile
+const path = require('path');
+const JavaParser = require('../parser/JavaParser');
 
 // Istanza del parser
 const parser = new JavaParser();

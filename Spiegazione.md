@@ -200,3 +200,166 @@ Non gestisce import con wildcard in modo specifico (es. import java.util.*)
 Non distingue tra classi e interfacce
 Conclusioni
 La libreria implementa tutti i requisiti richiesti per l'Assignment #02, parte 1, fornendo un'analisi completa e asincrona delle dipendenze in progetti Java. I test confermano il corretto funzionamento per tutti e tre i livelli di analisi: classi, package e progetti.
+
+
+
+
+
+electron:
+# Riassunto dell'applicazione Java Dependency Analyzer
+
+## Cosa fa l'applicazione
+
+Java Dependency Analyzer è un'applicazione desktop che permette di analizzare le dipendenze nei progetti Java. L'applicazione:
+
+1. **Scansiona progetti Java** selezionati dall'utente
+2. **Estrae le dipendenze** da ogni file Java trovato
+3. **Visualizza graficamente** le relazioni tra classi tramite un grafo interattivo
+4. **Fornisce statistiche** sul numero di file analizzati e dipendenze trovate
+
+## Tecnologie utilizzate
+
+### Framework principale
+- **Electron**: framework per lo sviluppo di applicazioni desktop multi-piattaforma usando tecnologie web
+
+### Backend (Main Process)
+- **Node.js**: ambiente di esecuzione JavaScript lato server
+- **RxJS**: libreria per programmazione reattiva, utilizzata per gestire gli stream di dati durante l'analisi
+- **fs.promises**: API del filesystem di Node.js per operazioni asincrone
+- **IPC (Inter-Process Communication)**: meccanismo di comunicazione tra il processo principale e il renderer
+
+### Frontend (Renderer Process)
+- **React**: libreria JavaScript per costruire interfacce utente
+- **D3.js**: libreria per la visualizzazione di dati, utilizzata per creare il grafo delle dipendenze
+- **Babel**: compilatore JavaScript per la compatibilità con la sintassi JSX
+
+### Parser Java
+- **JavaParser**: modulo personalizzato per analizzare i file Java ed estrarre le dipendenze
+
+### Architettura
+- **Pattern MVC**: separazione tra modelli (analyzer.js), viste (componenti React) e controller (main.js)
+- **Architettura a componenti**: UI organizzata in componenti React modulari (FileSelector, StatusPanel, DependencyGraph)
+- **Modello Publisher-Subscriber**: per la comunicazione asincrona durante l'analisi
+
+## Flusso di lavoro dell'applicazione
+
+1. L'utente seleziona una directory di un progetto Java
+2. L'app scansiona ricorsivamente la directory cercando file `.java`
+3. Ogni file trovato viene analizzato per estrarre le sue dipendenze
+4. I risultati vengono inviati incrementalmente all'interfaccia utente
+5. L'interfaccia mostra un grafo interattivo delle dipendenze trovate
+6. L'utente può interrompere l'analisi in qualsiasi momento
+
+## Caratteristiche distintive
+
+- **Analisi asincrona**: l'interfaccia rimane reattiva durante l'analisi di progetti grandi
+- **Visualizzazione interattiva**: il grafo delle dipendenze supporta zoom, pan e selezione dei nodi
+- **Differenziazione visiva**: nel grafo, le classi del progetto e le dipendenze esterne sono visivamente distinte
+- **Aggiornamento in tempo reale**: le statistiche si aggiornano durante l'analisi
+
+Questa applicazione combina l'efficienza di Node.js per l'analisi del codice con la flessibilità delle tecnologie web per l'interfaccia utente, il tutto integrato in un'applicazione desktop nativa grazie a Electron.
+
+
+
+spiegazione: 
+# Architettura e flusso dell'applicazione Electron Analyzer
+
+## Struttura generale
+
+L'applicazione Electron è organizzata secondo il pattern standard di Electron, con due processi principali:
+
+1. **Main Process (Backend)**: Gestisce l'applicazione e l'accesso al filesystem
+2. **Renderer Process (Frontend)**: Gestisce l'interfaccia utente con React
+
+## Flusso dell'applicazione
+
+### 1. Avvio applicazione
+- `main.js` avvia l'applicazione Electron
+- Crea una BrowserWindow con il preload script
+- Carica index.html nel renderer process
+
+### 2. Caricamento UI
+- index.html carica React, D3 e i componenti JSX
+- I componenti vengono renderizzati nell'elemento root
+- `App.jsx` configura i listener per gli eventi IPC
+
+### 3. Selezione progetto
+- L'utente interagisce con `FileSelector.jsx`
+- Quando clicca "Sfoglia":
+  - `window.electron.openDirectoryDialog()` viene chiamato
+  - Questo attiva un evento IPC (`open-directory-dialog`)
+  - `main.js` riceve l'evento e apre una dialog nativa con `dialog.showOpenDialog()`
+  - Il percorso selezionato ritorna al renderer
+
+### 4. Analisi del progetto
+- L'utente clicca "Avvia Analisi" in `App.jsx`
+- `window.electron.analyzeProject(path)` viene chiamato
+- **Main Process**:
+  1. `main.js` riceve la richiesta IPC (`analyze-project`)
+  2. Chiama `analyzeProject(directoryPath)` da `analyzer.js`
+  3. `analyzer.js` scansiona ricorsivamente la directory cercando file `.java`
+  4. Per ogni file Java trovato:
+     - Legge il contenuto
+     - Chiama `parseJavaFile(content)` da `parser-adapter.js`
+     - `parser-adapter.js` usa `JavaParser.js` per estrarre le dipendenze
+     - Restituisce un oggetto con il nome del file e le dipendenze
+  5. I risultati vengono inviati al renderer tramite eventi `dependency-update`
+
+### 5. Visualizzazione risultati
+- Il preload script riceve gli eventi IPC e li espone al renderer tramite callbacks
+- `App.jsx` riceve i dati tramite `window.electron.onDependencyUpdate(callback)`
+- I dati vengono aggiunti allo stato React dell'App
+- `DependencyGraph.jsx` riceve i dati e costruisce il grafo con D3.js
+
+## Componenti chiave
+
+### Nel Main Process:
+
+1. **main.js**:
+   - Crea la finestra dell'applicazione
+   - Gestisce gli eventi IPC
+   - Coordina l'analisi del progetto
+
+2. **analyzer.js**:
+   - Scansiona ricorsivamente la directory
+   - Legge i file Java
+   - Utilizza RxJS per creare uno stream di risultati
+
+3. **parser-adapter.js**:
+   - Interfaccia con JavaParser.js
+   - Estrae le dipendenze da ogni file Java
+
+### Nel Renderer Process:
+
+1. **App.jsx**:
+   - Componente principale React
+   - Gestisce lo stato dell'applicazione
+   - Coordina gli altri componenti
+
+2. **FileSelector.jsx**:
+   - Gestisce la selezione del percorso del progetto
+   - Interagisce con le dialog native tramite IPC
+
+3. **StatusPanel.jsx**:
+   - Mostra lo stato dell'analisi e le statistiche
+
+4. **DependencyGraph.jsx**:
+   - Costruisce e visualizza il grafo delle dipendenze con D3.js
+   - Gestisce interazioni come zoom e drag dei nodi
+
+## Comunicazione tra processi
+
+- **Preload script**:
+  - Crea un ponte sicuro tra main e renderer process
+  - Espone API limitate tramite `contextBridge.exposeInMainWorld()`
+  - Gestisce canali IPC bidirezionali
+
+- **Eventi IPC**:
+  - `open-directory-dialog`: Apre il selettore di directory
+  - `analyze-project`: Avvia l'analisi
+  - `cancel-analysis`: Interrompe un'analisi in corso
+  - `dependency-update`: Invia dati delle dipendenze trovate
+  - `dependency-error`: Comunica errori nell'analisi
+  - `dependency-complete`: Segnala il completamento dell'analisi
+
+Questa architettura separata garantisce sicurezza (il renderer non ha accesso diretto al filesystem) e performance (l'analisi pesante avviene nel main process mentre l'UI rimane reattiva).

@@ -1,15 +1,11 @@
 {
-  "name": "electron-analyzer",
+  "name": "java-dependency-analyzer",
   "version": "1.0.0",
-  "description": "Java dependency analyzer with Electron",
+  "description": "Analizzatore di dipendenze per progetti Java",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev",
-    "build": "electron-builder",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "electron-builder build --mac --win --linux"
   },
   "keywords": [],
   "author": "",
@@ -31,9 +27,32 @@
   },
   "dependencies": {
     "d3": "^7.9.0",
+    "java-parser": "^2.3.3",
     "javaparser": "^2.0.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rxjs": "^7.8.2"
+  },
+  "build": {
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "productName": "Java Dependency Analyzer",
+    "appId": "com.danielmeco.javadependencyanalyzer",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Development"
+    }
   }
 }

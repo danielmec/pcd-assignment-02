@@ -10,6 +10,15 @@ const DependencyGraph = ({ dependencies }) => {
       return;
     }
     
+    // Crea un mapping di nomi file per identificare correttamente i nodi del progetto
+    const projectFiles = new Set();
+    dependencies.forEach(dep => {
+      if (dep.packageName && dep.fileName) {
+        const fullName = `${dep.packageName}.${dep.fileName.replace('.java', '')}`;
+        projectFiles.add(fullName);
+      }
+    });
+    
     // Prepara i dati per il grafo
     const nodes = [];
     const links = [];
@@ -39,15 +48,21 @@ const DependencyGraph = ({ dependencies }) => {
         const targetName = parts[parts.length - 1];
         const targetPackage = parts.slice(0, -1).join('.');
         
+        // Verifica se questa dipendenza è anche un file del progetto
+        const isProjectFile = projectFiles.has(targetDep);
+        
         if (!nodeMap.has(targetDep)) {
           const targetNode = {
             id: targetDep,
             name: targetName,
             package: targetPackage,
-            group: 2 // Dipendenze
+            group: isProjectFile ? 1 : 2 // Usa gruppo 1 se è un file del progetto
           };
           nodes.push(targetNode);
           nodeMap.set(targetDep, targetNode);
+        } else if (isProjectFile) {
+          // Se è già nella mappa ma è un file del progetto, aggiorna il gruppo
+          nodeMap.get(targetDep).group = 1;
         }
         
         // Aggiungi collegamento
@@ -58,6 +73,9 @@ const DependencyGraph = ({ dependencies }) => {
         });
       });
     });
+    
+    console.log("Nodi generati:", nodes.length);
+    console.log("Link generati:", links.length);
     
     // Calcola dimensione del contenitore
     const width = containerRef.current.clientWidth;
@@ -89,7 +107,7 @@ const DependencyGraph = ({ dependencies }) => {
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('x', d3.forceX(width / 2).strength(0.1))
       .force('y', d3.forceY(height / 2).strength(0.1));
-      
+    
     // Funzioni per drag dei nodi
     function dragstarted(event, d) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -130,7 +148,9 @@ const DependencyGraph = ({ dependencies }) => {
     // Aggiungi cerchi ai nodi
     node.append('circle')
       .attr('r', 5)
-      .attr('fill', d => d.group === 1 ? '#FF6B6B' : '#4ECDC4');
+      .attr('fill', d => d.group === 1 ? '#FF6B6B' : '#4ECDC4')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5);
       
     // Aggiungi etichette
     node.append('text')
@@ -142,7 +162,7 @@ const DependencyGraph = ({ dependencies }) => {
       
     // Aggiungi tooltip
     node.append('title')
-      .text(d => `${d.id}\nPackage: ${d.package}`);
+      .text(d => `${d.id}\nPackage: ${d.package}\nTipo: ${d.group === 1 ? 'File del progetto' : 'Dipendenza'}`);
       
     // Aggiorna posizioni ad ogni tick
     simulation.on('tick', () => {

@@ -1,1 +1,8 @@
-node_modules
+# Ignora node_modules ovunque nel progetto
+node_modules/
+
+# Ignora specificamente la cartella dist dentro electron-analyzer
+electron-analyzer/dist/
+
+# Se vuoi ignorare tutte le cartelle dist nel progetto
+**/dist/
