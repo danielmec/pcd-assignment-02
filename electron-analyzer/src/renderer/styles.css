@@ -1,0 +1,152 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+h1, h2 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* App Container */
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* File Selector */
+.file-selector {
+  margin-bottom: 20px;
+}
+
+.file-selector .input-group {
+  display: flex;
+  gap: 5px;
+}
+
+.path-input {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+button {
+  padding: 8px 15px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.browse-button {
+  background-color: #2196F3;
+}
+
+.browse-button:hover {
+  background-color: #0b7dda;
+}
+
+.cancel-button {
+  background-color: #f44336;
+  margin-left: 10px;
+}
+
+.cancel-button:hover {
+  background-color: #d32f2f;
+}
+
+/* Status Panel */
+.status-panel {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.status-header {
+  margin-bottom: 15px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.status-badge.active {
+  background-color: #ffeb3b;
+  color: #333;
+}
+
+.status-badge.idle {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.stats-container {
+  display: flex;
+  justify-content: space-around;
+}
+
+.stat-box {
+  text-align: center;
+  padding: 10px;
+}
+
+.stat-box h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: normal;
+  color: #666;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+/* Error message */
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+/* Graph Container */
+.graph-container {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 20px;
+  min-height: 400px;
+}
+
+.graph-container svg {
+  border: 1px solid #eee;
+  border-radius: 3px;
+}
+
+/* Controls */
+.controls {
+  margin-bottom: 20px;
+}

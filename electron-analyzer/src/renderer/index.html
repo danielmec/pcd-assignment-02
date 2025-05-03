@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Java Dependency Analyzer</title>
+  <!-- Carica React da CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel per JSX -->
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- D3.js per il grafo -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="components/StatusPanel.jsx"></script>
+  <script type="text/babel" src="components/FileSelector.jsx"></script>
+  <script type="text/babel" src="components/DependencyGraph.jsx"></script>
+  <script type="text/babel" src="App.jsx"></script>
+</body>
+<html>
