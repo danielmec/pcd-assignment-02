@@ -10,6 +10,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    title: 'Java Dependency Analyzer',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -17,22 +18,15 @@ function createWindow() {
     }
   });
 
-  // Carica l'UI: in sviluppo carica un URL, altrimenti un file HTML locale
-  const isDev = process.argv.includes('--dev');
+  // Carica l'UI: sempre un file HTML locale
+  const startUrl = `file://${path.join(__dirname, '../renderer/index.html')}`;
   
-  const startUrl = isDev 
-    ? 'http://localhost:3000' // Se stai usando React con dev server
-    : `file://${path.join(__dirname, '../renderer/index.html')}`;
-  
-  // Sempre aprire DevTools per debug
-  mainWindow.webContents.openDevTools();
-  
-  // Aggiungi log per tracciare il caricamento
+  // per tracciare il caricamento
   console.log(`Caricamento URL: ${startUrl}`);
   
   mainWindow.loadURL(startUrl);
   
-  // Aggiungi listener per gli errori di caricamento
+  //  listener per gli errori di caricamento
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error(`Errore di caricamento: ${errorDescription} (${errorCode})`);
   });
