@@ -25,7 +25,7 @@ async function testClassDependencies() {
         
         return true;
     } catch (error) {
-        console.error('❌❌❌❌❌  Test fallito:', error.message);
+        console.error('Test fallito:', error.message);
         return false;
     }
 }
@@ -54,13 +54,14 @@ async function testPackageDependencies(testRoot) {
         
         return true;
     } catch (error) {
-        console.error('❌ Test fallito:', error.message);
+        console.error('Test fallito:', error.message);
         return false;
     }
 }
 
 /**
  * Testa l'analisi delle dipendenze di un progetto
+ * con visualizzazione gerarchica di package, file e dipendenze
  */
 async function testProjectDependencies(testRoot) {
     try {
@@ -75,25 +76,55 @@ async function testProjectDependencies(testRoot) {
         console.log('-------------------------');
         console.log(`Nome progetto: ${report.projectName}`);
         
-        // Ordina e visualizza i package
+        // Ordina i package per nome
         const sortedPackages = [...report.packageReports].sort((a, b) => 
             a.packageName.localeCompare(b.packageName)
         );
         
-        console.log(`Package analizzati (${sortedPackages.length}):`);
+        console.log(`\nDettaglio package (${sortedPackages.length}):`);
         sortedPackages.forEach(pkg => {
-            console.log(`- ${pkg.packageName}: ${pkg.dependencies.length} dipendenze`);
+            console.log(`\nPackage ${pkg.packageName}:`);
+            
+            // Ordina le classi per nome
+            const sortedClasses = [...pkg.classReports].sort((a, b) => 
+                a.className.localeCompare(b.className)
+            );
+            
+            // Visualizza ogni classe e le sue dipendenze
+            sortedClasses.forEach(cls => {
+                console.log(`File: ${cls.className}`);
+                
+                // Se non ci sono dipendenze
+                if (cls.dependencies.length === 0) {
+                    console.log(`    └─ Nessuna dipendenza`);
+                    return;
+                }
+                
+                // Ordina le dipendenze alfabeticamente
+                const sortedDeps = [...cls.dependencies].sort();
+                sortedDeps.forEach((dep, index, array) => {
+                    const isLast = index === array.length - 1;
+                    // Usa simboli per creare un bell'albero
+                    const prefix = isLast ? '    └─ ' : '    ├─ ';
+                    console.log(`${prefix}${dep}`);
+                });
+            });
         });
         
-        // Ordina e visualizza le dipendenze
-        const uniqueDeps = [...new Set(report.dependencies)].sort();
+        // Statistiche generali
+        console.log('\n Statistiche generali:');
+        console.log(`Package totali: ${sortedPackages.length}`);
+        console.log(`Classi totali: ${report.packageReports.reduce((sum, pkg) => sum + pkg.classReports.length, 0)}`);
+        console.log(`Dipendenze uniche: ${new Set(report.dependencies).size}`);
+        const uniqueDependencies = new Set(report.dependencies);
+        uniqueDependencies.forEach(dep => {
+            console.log(`-> ${dep}`);
+        });
         
-        console.log(`\nDipendenze trovate (${uniqueDeps.length}):`);
-        uniqueDeps.forEach(dep => console.log(`- ${dep}`));
         
         return true;
     } catch (error) {
-        console.error('❌ Test fallito:', error.message);
+        console.error('Test fallito:', error.message);
         return false;
     }
 }
@@ -104,14 +135,14 @@ async function testProjectDependencies(testRoot) {
 async function testInheritanceDependencies(testRoot) {
     try {
         // Analizza file Employee.java
-        const employeeAnalyzer = new DependecyAnalyserLib(); // ✅ Nome corretto
+        const employeeAnalyzer = new DependecyAnalyserLib(); 
         const employeeReport = await employeeAnalyzer.getClassDependencies(path.join(testRoot, '/com/example/model/Employee.java'));
         console.log("Employee dipendenze:");
         console.log(`- Import: ${employeeReport.dependencies.filter(d => !d.includes('Person')).join(', ')}`);
         console.log(`- Extends: ${employeeReport.dependencies.filter(d => d.includes('Person')).join(', ')}`);
 
         // Analizza file User.java
-        const userAnalyzer = new DependecyAnalyserLib(); // ✅ Nome corretto
+        const userAnalyzer = new DependecyAnalyserLib(); 
         const userReport = await userAnalyzer.getClassDependencies(path.join(testRoot, '/com/example/model/User.java'));
         console.log("User dipendenze:");
         console.log(`- Import: ${userReport.dependencies.filter(d => !d.includes('BaseEntity') && !d.includes('Person')).join(', ')}`);
@@ -119,7 +150,7 @@ async function testInheritanceDependencies(testRoot) {
         
         return true;
     } catch (error) {
-        console.error('❌ Test fallito:', error.message);
+        console.error('Test fallito:', error.message);
         return false;
     }
 }
@@ -128,7 +159,7 @@ async function testInheritanceDependencies(testRoot) {
  * Esegue tutti i test in sequenza
  */
 async function runAllTests() {
-    console.log('🚀 Inizio dei test della libreria DependecyAnalyserLib');
+    console.log(' Inizio dei test della libreria DependecyAnalyserLib');
     
     // Test semplice di una classe
     const classResult = await testClassDependencies();
@@ -140,17 +171,17 @@ async function runAllTests() {
     // const packageResult = await testPackageDependencies(testRoot);
     
     // Test progetto
-    //const projectResult = await testProjectDependencies(testRoot);
+    const projectResult = await testProjectDependencies(testRoot);
     
     // Test relazioni di ereditarietà
     //const inheritanceResult = await testInheritanceDependencies(testRoot);
     
     // Riepilogo dei risultati
-    console.log('\n📝 Riepilogo dei test:');
-    console.log(`- Test Classe: ${classResult ? '✅ Passato' : '❌ Fallito'}`);
-    //console.log(`- Test Package: ${packageResult ? '✅ Passato' : '❌ Fallito'}`);
-    //console.log(`- Test Progetto: ${projectResult ? '✅ Passato' : '❌ Fallito'}`);
-    //console.log(`- Test Ereditarietà: ${inheritanceResult ? '✅ Passato' : '❌ Fallito'}`);
+    console.log('\n Riepilogo dei test:');
+    console.log(`- Test Classe: ${classResult ? 'Passato' : 'Fallito'}`);
+    //console.log(`- Test Package: ${packageResult ? ' Passato' : ' Fallito'}`);
+    console.log(`- Test Progetto: ${projectResult ? ' Passato' : 'Fallito'}`);
+    //console.log(`- Test Ereditarietà: ${inheritanceResult ? ' Passato' : ' Fallito'}`);
 }
 
 // Esegui tutti i test
