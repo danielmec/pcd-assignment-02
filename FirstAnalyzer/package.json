@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "java-parser": "^x.x.x"  
+  },
+  "devDependencies": {
+    "electron-builder": "^26.0.12"
+  }
+}

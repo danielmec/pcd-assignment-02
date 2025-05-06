@@ -14,7 +14,12 @@ The Java Dependency Analyzer is a tool that examines Java source code to identif
 
 ## Usage
 
+
+It needs Node.js to execute
+
 The analyzer can be executed with:
+
+npm install
 
 node src/test/testAnalyzer.js
 
