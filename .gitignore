@@ -6,3 +6,7 @@ electron-analyzer/dist/
 
 # Se vuoi ignorare tutte le cartelle dist nel progetto
 **/dist/
+
+#client-server da ignorare
+
+analyzer
