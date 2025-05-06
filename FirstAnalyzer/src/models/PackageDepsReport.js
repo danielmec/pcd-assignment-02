@@ -1,4 +1,4 @@
-class PackageDepsReport {
+export class PackageDepsReport {
     constructor(packageName, classReports = []) {
         this.packageName = packageName;
         this.classReports = classReports;
@@ -29,4 +29,3 @@ class PackageDepsReport {
     }
     
 }
-module.exports = PackageDepsReport;

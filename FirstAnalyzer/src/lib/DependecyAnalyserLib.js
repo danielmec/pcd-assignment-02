@@ -1,11 +1,11 @@
-const fs = require('fs').promises;
-const path = require('path');
-const JavaParser = require('../parser/JavaParser');
-const ClassDepsReport = require('../models/ClassDepsReport');
-const PackageDepsReport = require('../models/PackageDepsReport');
-const ProjectDepsReport = require('../models/ProjectDepsReport');
+import { promises as fs } from 'fs';
+import path from 'path';
+import { JavaParser } from '../parser/JavaParser.js';
+import { ClassDepsReport } from '../models/ClassDepsReport.js';
+import { PackageDepsReport } from '../models/PackageDepsReport.js';
+import { ProjectDepsReport } from '../models/ProjectDepsReport.js';
 
-class DependecyAnalyserLib {
+export class DependecyAnalyserLib {
   constructor() {
     this.parser = new JavaParser();
   }
@@ -148,5 +148,3 @@ class DependecyAnalyserLib {
 
   // Altri metodi verranno implementati successivamente
 }
-
-module.exports = DependecyAnalyserLib;

@@ -1,6 +1,6 @@
-const { parse } = require('java-parser');
+import { parse } from 'java-parser';
 
-class JavaParser {
+export class JavaParser {
   /**
    * Estrae le dipendenze da un contenuto Java
    * @param {string} content - Il contenuto del file Java
@@ -534,5 +534,3 @@ class JavaParser {
     }
   }
 }
-
-module.exports = JavaParser;

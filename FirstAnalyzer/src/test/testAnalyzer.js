@@ -1,6 +1,11 @@
-const DependecyAnalyserLib = require('../lib/DependecyAnalyserLib');
-const path = require('path');
-const { createTestStructure } = require('./testStructure');
+import { DependecyAnalyserLib } from '../lib/DependecyAnalyserLib.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createTestStructure } from './testStructure.js';
+
+// In ES Modules non abbiamo __dirname, quindi dobbiamo crearlo
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Testa l'analisi delle dipendenze di una singola classe

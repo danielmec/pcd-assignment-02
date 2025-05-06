@@ -1,10 +1,11 @@
-const fs = require('fs').promises;
-const path = require('path');
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-/**
- * Crea una struttura di test con package e classi
- */
-async function createTestStructure() {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export async function createTestStructure() {
   const testRoot = path.resolve(__dirname, '../../test-data-project');
 
   if (await fs.stat(testRoot).catch(() => false)) {
@@ -149,5 +150,3 @@ public class ValidationApi {
   console.log('Struttura di test creata con successo in:', testRoot);
   return testRoot;
 }
-
-module.exports = { createTestStructure };
