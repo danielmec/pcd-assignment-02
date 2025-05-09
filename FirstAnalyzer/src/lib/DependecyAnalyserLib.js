@@ -27,6 +27,10 @@ export class DependecyAnalyserLib {
       const content = await fs.readFile(classSrcFile, 'utf8');
       console.log(`File letto con successo (${content.length} caratteri)`);
       
+      // Identifica il tipo di file
+      const fileType = this.parser.identifyFileType(content);
+      console.log(`Tipo di file identificato: ${fileType.type}`);
+      
       // Estrae le dipendenze usando il parser
       console.log("Estrazione delle dipendenze...");
       const dependencies = this.parser.extractDependencies(content);
@@ -34,7 +38,7 @@ export class DependecyAnalyserLib {
       
       // Crea e restituisce il report
       const className = path.basename(classSrcFile, '.java');
-      return new ClassDepsReport(className, dependencies);
+      return new ClassDepsReport(className, dependencies, fileType);
     } catch (error) {
       console.error(`Errore nell'analisi del file ${classSrcFile}:`, error);
       throw new Error(`Impossibile analizzare il file ${classSrcFile}: ${error.message}`);
@@ -146,5 +150,4 @@ export class DependecyAnalyserLib {
     }
   }
 
-  // Altri metodi verranno implementati successivamente
 }

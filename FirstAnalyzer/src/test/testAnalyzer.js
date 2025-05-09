@@ -25,6 +25,13 @@ async function testClassDependencies() {
         console.log('\nReport delle dipendenze:');
         console.log('-------------------------');
         console.log(`Nome classe: ${report.className}`);
+        console.log(`Tipo: ${report.fileType}`);
+        if (report.isAbstract) {
+            console.log('Classe astratta: Sì');
+        }
+        if (report.modifiers.length > 0) {
+            console.log(`Modificatori: ${report.modifiers.join(', ')}`);
+        }
         console.log('Dipendenze trovate:');
         report.dependencies.forEach(dep => console.log(`- ${dep}`));
         
@@ -97,7 +104,12 @@ async function testProjectDependencies(testRoot) {
             
             // Visualizza ogni classe e le sue dipendenze
             sortedClasses.forEach(cls => {
-                console.log(`File: ${cls.className}`);
+                console.log(`File: ${cls.className} (${cls.fileType}${cls.isAbstract ? ', abstract' : ''})`);
+                
+                // Mostra i modificatori se presenti
+                if (cls.modifiers.length > 0) {
+                    console.log(`    Modificatori: ${cls.modifiers.join(', ')}`);
+                }
                 
                 // Se non ci sono dipendenze
                 if (cls.dependencies.length === 0) {

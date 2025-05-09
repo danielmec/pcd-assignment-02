@@ -533,4 +533,138 @@ export class JavaParser {
       console.log("Relazione trovata:", typeName);
     }
   }
+
+  /**
+   * Identifica il tipo di elemento Java contenuto nel file
+   * @param {string} content - Il contenuto del file Java
+   * @returns {Object} - Informazioni sul tipo di file (classe, interfaccia, etc.)
+   */
+  identifyFileType(content) {
+    try {
+      console.log("Analisi del tipo di file Java...");
+      const ast = parse(content);
+      
+      const result = {
+        type: "UNKNOWN",
+        name: null,
+        isAbstract: false,
+        modifiers: [] // Modificatori come public, private, abstract etc.
+      };
+      
+      // Naviga nella struttura corretta: ordinaryCompilationUnit
+      if (ast.children && ast.children.ordinaryCompilationUnit) {
+        const compilationUnit = ast.children.ordinaryCompilationUnit[0];
+        
+        if (compilationUnit.children && compilationUnit.children.typeDeclaration) {
+          const typeDeclarations = compilationUnit.children.typeDeclaration;
+          
+          // Prendiamo in considerazione solo la prima dichiarazione di tipo
+          // (la principale nel file)
+          if (typeDeclarations.length > 0) {
+            const typeDecl = typeDeclarations[0];
+            
+            // Verifica se è una classe
+            if (typeDecl.children && typeDecl.children.classDeclaration) {
+              const classDecl = typeDecl.children.classDeclaration[0];
+              if (classDecl.children && classDecl.children.normalClassDeclaration) {
+                const normalClass = classDecl.children.normalClassDeclaration[0];
+                
+                result.type = "CLASS";
+                
+                // Estrai nome della classe
+                if (normalClass.children && normalClass.children.typeIdentifier) {
+                  result.name = normalClass.children.typeIdentifier[0].image;
+                }
+                
+                // Verifica se è astratta
+                if (normalClass.children && normalClass.children.classModifier) {
+                  for (const modifier of normalClass.children.classModifier) {
+                    const modText = this._getModifierText(modifier);
+                    if (modText) {
+                      result.modifiers.push(modText);
+                      if (modText === "abstract") {
+                        result.isAbstract = true;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Verifica se è un'interfaccia
+            else if (typeDecl.children && typeDecl.children.interfaceDeclaration) {
+              const interfaceDecl = typeDecl.children.interfaceDeclaration[0];
+              if (interfaceDecl.children && interfaceDecl.children.normalInterfaceDeclaration) {
+                const normalInterface = interfaceDecl.children.normalInterfaceDeclaration[0];
+                
+                result.type = "INTERFACE";
+                
+                // Estrai nome dell'interfaccia
+                if (normalInterface.children && normalInterface.children.typeIdentifier) {
+                  result.name = normalInterface.children.typeIdentifier[0].image;
+                }
+                
+                // Le interfacce sono implicitamente astratte
+                result.isAbstract = true;
+                
+                // Estrai i modificatori
+                if (normalInterface.children && normalInterface.children.interfaceModifier) {
+                  for (const modifier of normalInterface.children.interfaceModifier) {
+                    const modText = this._getModifierText(modifier);
+                    if (modText) {
+                      result.modifiers.push(modText);
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Verifica se è un'enumerazione
+            else if (typeDecl.children && typeDecl.children.enumDeclaration) {
+              const enumDecl = typeDecl.children.enumDeclaration[0];
+              
+              result.type = "ENUM";
+              
+              // Estrai nome dell'enumerazione
+              if (enumDecl.children && enumDecl.children.typeIdentifier) {
+                result.name = enumDecl.children.typeIdentifier[0].image;
+              }
+              
+              // Estrai i modificatori
+              if (enumDecl.children && enumDecl.children.enumModifier) {
+                for (const modifier of enumDecl.children.enumModifier) {
+                  const modText = this._getModifierText(modifier);
+                  if (modText) {
+                    result.modifiers.push(modText);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      console.log(`Tipo di file identificato: ${result.type}, Nome: ${result.name}`);
+      return result;
+    } catch (error) {
+      console.error('Errore durante l\'identificazione del tipo di file:', error);
+      return { type: "ERROR", name: null, error: error.message };
+    }
+  }
+  
+  /**
+   * Estrae il testo di un modificatore
+   * @private
+   */
+  _getModifierText(modifierNode) {
+    if (modifierNode.children) {
+      if (modifierNode.children.Public) return "public";
+      if (modifierNode.children.Private) return "private";
+      if (modifierNode.children.Protected) return "protected";
+      if (modifierNode.children.Abstract) return "abstract";
+      if (modifierNode.children.Static) return "static";
+      if (modifierNode.children.Final) return "final";
+    }
+    return null;
+  }
 }
