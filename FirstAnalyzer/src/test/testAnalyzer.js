@@ -1,7 +1,6 @@
 import { DependecyAnalyserLib } from '../lib/DependecyAnalyserLib.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createTestStructure } from './testStructure.js';
 import readline from 'readline';
 
 // In ES Modules non abbiamo __dirname, quindi dobbiamo crearlo
@@ -244,8 +243,8 @@ async function runAllTests() {
     // Test semplice di una classe
     const classResult = await testClassDependencies();
     
-    // Crea struttura di test complessa
-    const testRoot = await createTestStructure();
+    // Percorso alla directory di test esistente
+    const testRoot = path.resolve(__dirname, '../../test-data-project');
     
     // Test package
     const packageResult = await testPackageDependencies(testRoot);
